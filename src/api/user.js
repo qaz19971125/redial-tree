@@ -4,21 +4,21 @@ export function login(data) {
   return http({
     url: '/login',
     method: 'post',
-    data
+    data,
   })
 }
 
-export function getInfo(token) {
+export function getInfo(params) {
   return http({
     url: '/user-info',
     method: 'get',
-    params: { token }
+    params,
   })
 }
 
 export function logout() {
   return http({
     url: '/logout',
-    method: 'post'
+    method: 'post',
   })
 }

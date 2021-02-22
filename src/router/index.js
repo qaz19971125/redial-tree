@@ -6,9 +6,8 @@ Vue.use(Router)
 import Layout from '@/layout'
 
 /**
- * constantRoutes
- * a base page that does not have permission requirements
- * all roles can be accessed
+ * 常用路由
+ * 不需要权限的路由
  */
 export const constantRoutes = [
   {
@@ -48,7 +47,7 @@ export const constantRoutes = [
     children: [
       {
         path: 'menu1',
-        component: () => import('@/views/nested/menu1/index'), // Parent router-view
+        component: () => import('@/views/nested/menu1/index'),
         name: 'Menu1',
         meta: { title: 'Menu1' },
         children: [
@@ -102,7 +101,7 @@ export const constantRoutes = [
 
 const createRouter = () =>
   new Router({
-    // mode: 'history', // require service support
+    // mode: 'history',
     scrollBehavior: () => ({ y: 0 }),
     routes: constantRoutes,
   })

@@ -1,7 +1,5 @@
 /**
  * 处理查询参数
- * 条件为空则删除字段
- * 条件为空数组则删除字段
  * @param {object} params - 查询参数
  * @returns {object} params - 转化后的参数
  */
