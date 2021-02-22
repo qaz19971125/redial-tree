@@ -7,11 +7,6 @@ function resolve(dir) {
 }
 
 const name = defaultSettings.title
-const port = 9528
-const serveIpMap = {
-  default: 'http://10.1.13.44:8080'
-}
-const serveTarget = 'default'
 
 module.exports = {
   publicPath: '/',
@@ -20,13 +15,10 @@ module.exports = {
   lintOnSave: process.env.NODE_ENV === 'development',
   productionSourceMap: false,
   devServer: {
-    port: port,
+    port: 9528,
     proxy: {
       [process.env.VUE_APP_BASE_API]: {
-        target:
-          process.env.ENV === 'mock'
-            ? process.env.MOCK_SERVER_IP
-            : serveIpMap[serveTarget],
+        target: process.env.SERVER_IP,
         pathRewrite: {
           '^/api': ''
         },
