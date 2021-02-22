@@ -1,0 +1,75 @@
+@import '~normalize.css/normalize.css';
+@import './mixin.scss';
+@import './var.scss';
+
+* {
+  box-sizing: border-box;
+  @include scrollBar;
+}
+
+html {
+  height: 100%;
+  width: 100%;
+  color: rgba(0, 0, 0, 0.65);
+}
+
+body {
+  height: 100%;
+  width: 100%;
+  min-width: 1200px;
+  max-width: 2560px;
+  margin: 0 auto;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB,
+    Microsoft YaHei, Arial, sans-serif;
+}
+
+label {
+  font-weight: 600;
+}
+
+a:focus,
+a:active {
+  outline: none;
+}
+
+a,
+a:focus,
+a:hover {
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+}
+
+div:focus {
+  outline: none;
+}
+
+.clearfix {
+  &:after {
+    content: '';
+    display: table;
+    clear: both;
+  }
+}
+
+.mr8 {
+  margin-right: 8px;
+}
+
+.ml8 {
+  margin-left: 8px;
+}
+
+.link {
+  color: $--color-primary;
+  transition: color .3s;
+  user-select: none;
+  cursor: pointer;
+}
+
+.pointer {
+  cursor: pointer;
+}
