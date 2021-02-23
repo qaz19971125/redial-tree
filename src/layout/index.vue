@@ -4,7 +4,7 @@
     <section class="app-content no-padding">
       <navbar />
       <tags-view></tags-view>
-      <transition name="fade-transform" mode="out-in">
+      <transition name="fade" mode="out-in">
         <router-view :key="key" />
       </transition>
     </section>
