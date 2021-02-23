@@ -5,7 +5,7 @@ export default {
   props: {
     icon: {
       type: String,
-      default: 'el-icon-document',
+      default: 'icon-menu-item',
     },
     title: {
       type: String,

@@ -1,3 +1,7 @@
+.icon-menu-item:before {
+  content: '\e651';
+}
+
 .icon-goto:before {
   content: '\e6d8';
 }
