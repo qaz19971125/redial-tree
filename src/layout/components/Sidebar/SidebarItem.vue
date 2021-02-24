@@ -2,22 +2,17 @@
   <div v-if="!item.hidden">
     <template
       v-if="
-        hasOneShowingChild(item.children, item) &&
-          (!onlyOneChild.children || onlyOneChild.noShowingChildren) &&
-          !item.alwaysShow
+        hasOneShowingChild(item.children, item) && !onlyOneChild.children
       "
     >
-      <router-link
-        v-if="onlyOneChild.meta"
-        :to="resolvePath(onlyOneChild.path)"
-      >
+      <router-link :to="resolvePath(onlyOneChild.path)">
         <el-menu-item
           :index="resolvePath(onlyOneChild.path)"
           :class="{ 'submenu-title-noDropdown': !isNest }"
         >
           <item
-            :icon="onlyOneChild.meta.icon || (item.meta && item.meta.icon)"
-            :title="onlyOneChild.meta.title"
+            :icon="onlyOneChild.meta && onlyOneChild.meta.icon"
+            :title="onlyOneChild.meta && onlyOneChild.meta.title"
           />
         </el-menu-item>
       </router-link>
@@ -31,9 +26,8 @@
     >
       <template slot="title">
         <item
-          v-if="item.meta"
           :icon="item.meta && item.meta.icon"
-          :title="item.meta.title"
+          :title="item.meta && item.meta.title"
         />
       </template>
       <sidebar-item
@@ -71,34 +65,31 @@ export default {
     },
   },
   data() {
-    // TODO: refactor with render function
+    // 防止响应式
     this.onlyOneChild = null
     return {}
   },
   methods: {
     hasOneShowingChild(children = [], parent) {
       const showingChildren = children.filter((item) => {
-        if (item.hidden) {
-          return false
-        } else {
-          // Temp set(will be used if only has one showing child)
-          this.onlyOneChild = item
-          return true
-        }
+        const hidden = !!item.hidden
+        return !hidden
       })
 
-      // When there is only one child router, the child router is displayed by default
-      if (showingChildren.length === 1) {
-        return true
+      if (showingChildren.length > 1) {
+        return false
+      } else {
+        // 当只有一个非hidden子路由时，默认展示该唯一子路由
+        if (showingChildren.length === 1) {
+          this.onlyOneChild = showingChildren[0]
+          return true
+        }
+        // 当没有子路由时，默认展示该父级路由
+        if (showingChildren.length === 0) {
+          this.onlyOneChild = { ...parent, path: '' }
+          return true
+        }
       }
-
-      // Show parent if there are no child router to display
-      if (showingChildren.length === 0) {
-        this.onlyOneChild = { ...parent, path: '', noShowingChildren: true }
-        return true
-      }
-
-      return false
     },
     resolvePath(routePath) {
       return path.resolve(this.basePath, routePath)

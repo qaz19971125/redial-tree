@@ -35,13 +35,14 @@ export default {
   computed: {
     ...mapGetters(['sidebar']),
     routes() {
-      return this.$router.options.routes
+      return this.$router.options.routes.filter((route) => {
+        const hidden = !!route.hidden
+        return !hidden
+      })
     },
     activeMenu() {
       const route = this.$route
       const { meta, path } = route
-      // if set path, the sidebar will highlight the path you set
-      // 查看router/index.js中的注解
       if (meta.activeMenu) {
         return meta.activeMenu
       }
