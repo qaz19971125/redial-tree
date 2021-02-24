@@ -65,7 +65,7 @@ div:focus {
 
 .link {
   color: $--color-primary;
-  transition: color .3s;
+  transition: color .28s ease-in-out;
   user-select: none;
   cursor: pointer;
 }
