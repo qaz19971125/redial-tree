@@ -61,7 +61,7 @@ meta: {
 
 所有全局样式在`@/styles`下编写。
 
-``` 
+```
 ├── styles
 │   ├── base.scss                # 基础样式
 │   ├── element-ui.scss          # 全局自定义 element-ui 样式
@@ -88,7 +88,9 @@ meta: {
 
 #### 数据mock
 
+推荐使用`easy mock`或者`YApi`等成熟的开源数据mock服务平台。
 
+服务地址ip和接口前缀需要配置在根目录下的`.env.mock`文件里，然后使用`npm run serve:mock`指令启动本地开发环境。若需要进行前后端联调，则使用`npm run serve`指令启动本地开发环境。
 
 ## 项目规范
 
