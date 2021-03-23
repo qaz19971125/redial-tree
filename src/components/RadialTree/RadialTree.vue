@@ -34,9 +34,15 @@ export default {
       // 1. 先经过d3.hierarchy()处理
       // 2. 再经过treeLayoutCalculator()处理
       treeRoot: null,
+      nodeRadius: 10,
+      duration: 500,
     }
   },
-  computed: {},
+  computed: {
+    treeRadius() {
+      return this.treeContainerWidth
+    },
+  },
   watch: {},
   mounted() {
     this.$nextTick(() => {
@@ -45,15 +51,17 @@ export default {
       this.treeContainer = d3.select(`#radial-tree-${this.id}`)
       this.treeContent = this.treeContainer.select('g.radial-tree-content')
       this.treeLayoutCalculator = d3
-        .tree()
-        .size([360, this.treeContainerWidth / 2])
-        .separation((a, b) => (a.parent === b.parent ? 1 : 2) / a.depth)
+        .cluster()
+        .size([2 * Math.PI, this.treeRadius - 100])
+        // 该布局计算得到极坐标。x表示弧度制角度，y表示到圆心的距离。因此在绘图时要转化到直角坐标系。
+        // 用x控制rotate，用y控制translate
+        .separation((a, b) => (a.parent === b.parent ? 1 : 3) / a.depth)
 
       this.initData()
       this.initZoomHandler()
 
-      this.draw(this.treeRoot)
-      this.centerNode(this.treeRoot)
+      this.draw(this.treeRoot, true)
+      this.centerChart()
     })
   },
   methods: {
@@ -63,22 +71,6 @@ export default {
       this.treeContainerWidth = width
       this.treeContainerHeight = height
     },
-    initData() {
-      this.treeRoot = d3
-        .hierarchy(this.data)
-        .sort((a, b) => d3.ascending(a.data.name, b.data.name))
-      this.treeRoot.descendants().forEach((d, i) => {
-        d.id = i
-        d._children = d.children
-        if (d.depth > 2) {
-          d.children = null
-        }
-      })
-      // 初始化阶段，给树根节点一个初始位置
-      // TODO: 初始位置为画布中心，如何计算？
-      this.treeRoot.lastX = this.treeContainerHeight / 2
-      this.treeRoot.lastY = 0
-    },
     calculateLayout() {
       if (typeof this.treeLayoutCalculator !== 'function') {
         console.warn(`[RadialTree]: treeLayoutCalculator必须为一个函数`)
@@ -86,38 +78,74 @@ export default {
       }
       this.treeLayoutCalculator(this.treeRoot)
     },
-
+    initData(initialDepth = 2) {
+      this.treeRoot = d3
+        .hierarchy(this.data)
+        .sort((a, b) => d3.ascending(a.data.name, b.data.name))
+      this.treeRoot.descendants().forEach((d, i) => {
+        d.id = i
+        d._children = d.children
+        if (d.depth >= initialDepth) {
+          d.children = null
+        }
+      })
+    },
     /**
      * @param source - 源节点，表示从哪个节点开始绘图
      */
-    draw(source) {
+    draw(source, firstDraw = false) {
+      const that = this
       const { treeContainer } = this
-      const t = treeContainer.transition().duration(300)
-      const nodes = this.treeRoot.descendants().reverse()
+      const nodes = this.treeRoot.descendants()
       const links = this.treeRoot.links()
       // 计算树布局
       this.calculateLayout()
+      if (firstDraw) {
+        source.lastX = source.x
+        source.lastY = source.y
+      }
       // 更新节点
+      // TODO: 不同类型的节点颜色不同
       const node = treeContainer
         .select('.radial-tree-node')
-        .selectAll('circle')
+        .selectAll('g.node')
         .data(nodes, (d) => d.id)
 
       const nodeEnter = node
         .enter()
+        .append('g')
+        .attr('class', 'node')
+        .attr('cursor', (d) => (d._children ? 'pointer' : 'not-allowed'))
+        .attr(
+          'transform',
+          (d) =>
+            `rotate(${(source.lastX * 180) / Math.PI - 90}) translate(${
+              source.lastY
+            },0)`
+        )
+        .call(this.bindNodeEvent) // 为节点绑定事件
+
+      nodeEnter
         .append('circle')
-        .attr('transform', (d) => `translate(${source.lastY},${source.lastX})`)
         .attr('fill', (d) => (d._children ? '#555' : '#999'))
-        .attr('r', 8)
-        .on('click', (e, d) => {
-          d.children = d.children ? null : d._children
-          this.draw(d)
-          this.centerNode(d)
+        .attr('r', (d) => {
+          if (d.depth === 0) {
+            return this.nodeRadius * 5
+          } else if (d._children) {
+            return this.nodeRadius * 3
+          } else {
+            return this.nodeRadius
+          }
         })
+
+      nodeEnter.append('text').text((d) => d.id)
+
+      node.exit().remove()
 
       node
         .merge(nodeEnter)
-        .transition(t)
+        .transition()
+        .duration(this.duration)
         .attr(
           'transform',
           (d) => `
@@ -125,12 +153,8 @@ export default {
         translate(${d.y},0)
       `
         )
-
-      node
-        .exit()
-        .transition(t)
-        .attr('transform', (d) => `translate(${source.lastY},${source.lastX})`)
       // 更新线
+      // TODO: 不同类型的线颜色不同
       const link = treeContainer
         .select('.radial-tree-link')
         .selectAll('path')
@@ -139,21 +163,19 @@ export default {
       const linkEnter = link
         .enter()
         .append('path')
+        .attr('class', 'link')
         .attr('d', (d) => {
           const o = { x: source.lastX, y: source.lastY }
           return this.diagonal({ source: o, target: o })
         })
 
-      link.merge(linkEnter).transition(t).attr('d', this.diagonal)
+      link.exit().remove()
 
       link
-        .exit()
-        .transition(t)
-        .remove()
-        .attr('d', (d) => {
-          const o = { x: source.lastX, y: source.lastY }
-          return this.diagonal({ source: o, target: o })
-        })
+        .merge(linkEnter)
+        .transition()
+        .duration(this.duration)
+        .attr('d', this.diagonal)
 
       // 缓存各节点旧的位置
       this.treeRoot.each((d) => {
@@ -162,10 +184,9 @@ export default {
       })
     },
     /**
-     * 节点居中到画布中心
-     * @param source - 要居中的节点
+     * 居中画布
      */
-    centerNode(node) {
+    centerChart() {
       const {
         treeContainer,
         treeContainerWidth,
@@ -173,15 +194,14 @@ export default {
         zoomListener,
         zoomScaleNow,
       } = this
-      // TODO: 点放在画图中间的坐标怎么计算？
-      const x = node.lastY * zoomScaleNow + treeContainerWidth / 2
-      const y = node.lastX * zoomScaleNow + treeContainerHeight / 2
+      const x = treeContainerWidth / 2
+      const y = treeContainerHeight / 2
       treeContainer
         .transition()
         .duration(2500)
         .call(
           zoomListener.transform,
-          d3.zoomIdentity.translate(-x, -y).scale(zoomScaleNow)
+          d3.zoomIdentity.translate(x, y).scale(zoomScaleNow)
         )
     },
     diagonal(node) {
@@ -189,6 +209,63 @@ export default {
         .linkRadial()
         .angle((d) => d.x)
         .radius((d) => d.y)(node)
+    },
+    bindNodeEvent(nodeSelection, ...args) {
+      const that = this
+      nodeSelection
+        .on('click', this.handleNodeClick.bind(this))
+        .on('mouseenter', function() {
+          const circle = d3.select(this).select('circle')
+          circle
+            .transition()
+            .duration(250)
+            .attr('r', function(d) {
+              const r =
+                d.depth === 0
+                  ? that.nodeRadius * 5
+                  : d._children
+                    ? that.nodeRadius * 3
+                    : that.nodeRadius
+              return r + 10
+            })
+        })
+        .on('mouseleave', function() {
+          const circle = d3.select(this).select('circle')
+          circle
+            .transition()
+            .duration(250)
+            .attr('r', function(d) {
+              const r =
+                d.depth === 0
+                  ? that.nodeRadius * 5
+                  : d._children
+                    ? that.nodeRadius * 3
+                    : that.nodeRadius
+              return r
+            })
+        })
+    },
+    handleNodeClick(e, d) {
+      // TODO: 给点击的节点一个点击效果
+      d.children = d.children ? null : d._children
+      this.limitMaximumVisibleNodes(50, d)
+      this.draw(d)
+    },
+    /**
+     * 限制显示的节点数量
+     */
+    limitMaximumVisibleNodes(max, node) {
+      const descendants = this.treeRoot.descendants()
+      const currentNodeCount =
+        descendants.length + (node.data.children || []).length
+      if (currentNodeCount >= max) {
+        const ancestors = node.ancestors()
+        this.treeRoot.eachAfter((ch) => {
+          if (ch.children && !ancestors.includes(ch)) {
+            ch.children = null
+          }
+        })
+      }
     },
   },
 }
@@ -204,5 +281,8 @@ export default {
   stroke-width: 1.5;
   stroke-opacity: 0.4;
   fill: none;
+  pointer-events: none;
+}
+.node {
 }
 </style>
