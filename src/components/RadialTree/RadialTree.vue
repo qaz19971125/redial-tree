@@ -35,12 +35,15 @@ export default {
       // 2. 再经过treeLayoutCalculator()处理
       treeRoot: null,
       nodeRadius: 10,
-      duration: 500,
+      durationRate: 1,
     }
   },
   computed: {
     treeRadius() {
       return this.treeContainerWidth
+    },
+    duration() {
+      return 500 * this.durationRate
     },
   },
   watch: {},
@@ -51,7 +54,7 @@ export default {
       this.treeContainer = d3.select(`#radial-tree-${this.id}`)
       this.treeContent = this.treeContainer.select('g.radial-tree-content')
       this.treeLayoutCalculator = d3
-        .cluster()
+        .tree()
         .size([2 * Math.PI, this.treeRadius - 100])
         // 该布局计算得到极坐标。x表示弧度制角度，y表示到圆心的距离。因此在绘图时要转化到直角坐标系。
         // 用x控制rotate，用y控制translate
@@ -210,6 +213,9 @@ export default {
         .angle((d) => d.x)
         .radius((d) => d.y)(node)
     },
+    /**
+     * 为节点绑定事件
+     */
     bindNodeEvent(nodeSelection, ...args) {
       const that = this
       nodeSelection
@@ -248,21 +254,25 @@ export default {
     handleNodeClick(e, d) {
       // TODO: 给点击的节点一个点击效果
       d.children = d.children ? null : d._children
-      this.limitMaximumVisibleNodes(50, d)
+      this.durationRate = 1
+      this.limitMaximumVisibleNodes(40, d)
       this.draw(d)
     },
     /**
      * 限制显示的节点数量
+     * 若触发剪枝操作，延长duration
      */
     limitMaximumVisibleNodes(max, node) {
       const descendants = this.treeRoot.descendants()
-      const currentNodeCount =
-        descendants.length + (node.data.children || []).length
+      const currentNodeCount = descendants.length + (node.children || []).length
       if (currentNodeCount >= max) {
+        this.durationRate = 4 // 延长duration
         const ancestors = node.ancestors()
-        this.treeRoot.eachAfter((ch) => {
-          if (ch.children && !ancestors.includes(ch)) {
-            ch.children = null
+        this.treeRoot.eachBefore((currentNode) => {
+          // 从根节点开始做先序遍历，做剪枝操作
+          // 被剪枝的节点是node的同级节点
+          if (currentNode.children && !ancestors.includes(currentNode)) {
+            currentNode.children = null
           }
         })
       }
