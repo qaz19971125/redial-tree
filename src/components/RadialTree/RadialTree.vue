@@ -35,6 +35,7 @@ export default {
       // 2. 再经过treeLayoutCalculator()处理
       treeRoot: null,
       nodeRadius: 10,
+      durationBase: 300,
       durationRate: 1,
     }
   },
@@ -43,7 +44,7 @@ export default {
       return this.treeContainerWidth
     },
     duration() {
-      return 500 * this.durationRate
+      return this.durationBase * this.durationRate
     },
   },
   watch: {},
@@ -54,7 +55,7 @@ export default {
       this.treeContainer = d3.select(`#radial-tree-${this.id}`)
       this.treeContent = this.treeContainer.select('g.radial-tree-content')
       this.treeLayoutCalculator = d3
-        .tree()
+        .cluster()
         .size([2 * Math.PI, this.treeRadius - 100])
         // 该布局计算得到极坐标。x表示弧度制角度，y表示到圆心的距离。因此在绘图时要转化到直角坐标系。
         // 用x控制rotate，用y控制translate
@@ -117,7 +118,7 @@ export default {
       const nodeEnter = node
         .enter()
         .append('g')
-        .attr('class', 'node')
+        .classed('node', true)
         .attr('cursor', (d) => (d._children ? 'pointer' : 'not-allowed'))
         .attr(
           'transform',
@@ -166,7 +167,7 @@ export default {
       const linkEnter = link
         .enter()
         .append('path')
-        .attr('class', 'link')
+        .classed('link', true)
         .attr('d', (d) => {
           const o = { x: source.lastX, y: source.lastY }
           return this.diagonal({ source: o, target: o })
@@ -201,7 +202,7 @@ export default {
       const y = treeContainerHeight / 2
       treeContainer
         .transition()
-        .duration(2500)
+        .duration(this.durationBase * 10)
         .call(
           zoomListener.transform,
           d3.zoomIdentity.translate(x, y).scale(zoomScaleNow)
@@ -220,11 +221,12 @@ export default {
       const that = this
       nodeSelection
         .on('click', this.handleNodeClick.bind(this))
-        .on('mouseenter', function() {
+        .on('mouseenter', function(e, d) {
+          // hover放大动效
           const circle = d3.select(this).select('circle')
           circle
             .transition()
-            .duration(250)
+            .duration(that.durationBase)
             .attr('r', function(d) {
               const r =
                 d.depth === 0
@@ -234,12 +236,29 @@ export default {
                     : that.nodeRadius
               return r + 10
             })
+          // 相关节点和边高亮动效
+          const ancestors = d.ancestors()
+          const descendants = d.descendants()
+          const highlight =
+            d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
+          that.treeContent
+            .selectAll('path.link')
+            .filter((d) => highlight.includes(d.target))
+            .classed('highlight', true)
+            .attr('stroke', '#1493C8')
+          that.treeContent
+            .selectAll('g.node')
+            .filter((d) => highlight.includes(d))
+            .classed('highlight', true)
+            .select('circle')
+            .attr('fill', '#1493C8')
         })
-        .on('mouseleave', function() {
+        .on('mouseleave', function(e, d) {
+          // hover缩小动效
           const circle = d3.select(this).select('circle')
           circle
             .transition()
-            .duration(250)
+            .duration(that.durationBase)
             .attr('r', function(d) {
               const r =
                 d.depth === 0
@@ -249,6 +268,22 @@ export default {
                     : that.nodeRadius
               return r
             })
+          // 相关节点和边取消高亮动效
+          const ancestors = d.ancestors()
+          const descendants = d.descendants()
+          const highlight =
+            d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
+          that.treeContent
+            .selectAll('path.link')
+            .filter((d) => highlight.includes(d.target))
+            .classed('highlight', false)
+            .attr('stroke', '#555')
+          that.treeContent
+            .selectAll('g.node')
+            .filter((d) => highlight.includes(d))
+            .classed('highlight', false)
+            .select('circle')
+            .attr('fill', (d) => (d._children ? '#555' : '#999'))
         })
     },
     handleNodeClick(e, d) {
@@ -294,5 +329,10 @@ export default {
   pointer-events: none;
 }
 .node {
+}
+.link {
+  &.highlight {
+    stroke-width: 5;
+  }
 }
 </style>
