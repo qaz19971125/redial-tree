@@ -99,7 +99,7 @@ export default {
      */
     draw(source, firstDraw = false) {
       const that = this
-      const { treeContainer } = this
+      const { treeContent } = this
       const nodes = this.treeRoot.descendants()
       const links = this.treeRoot.links()
       // 计算树布局
@@ -110,15 +110,16 @@ export default {
       }
       // 更新节点
       // TODO: 不同类型的节点颜色不同
-      const node = treeContainer
+      const node = treeContent
         .select('.radial-tree-node')
         .selectAll('g.node')
         .data(nodes, (d) => d.id)
 
-      const nodeEnter = node
-        .enter()
-        .append('g')
-        .classed('node', true)
+      const nodeEnter = node.enter().append('g').classed('node', true)
+      const nodeExit = node.exit()
+      const nodeUpdate = node.merge(nodeEnter)
+
+      nodeEnter
         .attr('cursor', (d) => (d._children ? 'pointer' : 'not-allowed'))
         .attr(
           'transform',
@@ -144,10 +145,9 @@ export default {
 
       nodeEnter.append('text').text((d) => d.id)
 
-      node.exit().remove()
+      nodeExit.remove()
 
-      node
-        .merge(nodeEnter)
+      nodeUpdate
         .transition()
         .duration(this.duration)
         .attr(
@@ -157,29 +157,29 @@ export default {
         translate(${d.y},0)
       `
         )
+      // 字体回正
+      nodeUpdate
+        .selectAll('text')
+        .attr('transform', (d) => `rotate(${-((d.x * 180) / Math.PI - 90)})`)
+
       // 更新线
       // TODO: 不同类型的线颜色不同
-      const link = treeContainer
+      const link = treeContent
         .select('.radial-tree-link')
         .selectAll('path')
         .data(links, (d) => d.target.id)
 
-      const linkEnter = link
-        .enter()
-        .append('path')
-        .classed('link', true)
-        .attr('d', (d) => {
-          const o = { x: source.lastX, y: source.lastY }
-          return this.diagonal({ source: o, target: o })
-        })
+      const linkEnter = link.enter().append('path').classed('link', true)
+      const linkExit = link.exit()
+      const linkUpdate = link.merge(linkEnter)
 
-      link.exit().remove()
+      linkEnter.attr('d', (d) => {
+        return this.diagonal({ source: d.source, target: d.source })
+      })
 
-      link
-        .merge(linkEnter)
-        .transition()
-        .duration(this.duration)
-        .attr('d', this.diagonal)
+      linkExit.remove()
+
+      linkUpdate.transition().duration(this.duration).attr('d', this.diagonal)
 
       // 缓存各节点旧的位置
       this.treeRoot.each((d) => {
@@ -208,11 +208,11 @@ export default {
           d3.zoomIdentity.translate(x, y).scale(zoomScaleNow)
         )
     },
-    diagonal(node) {
+    diagonal(link) {
       return d3
         .linkRadial()
         .angle((d) => d.x)
-        .radius((d) => d.y)(node)
+        .radius((d) => d.y)(link)
     },
     /**
      * 为节点绑定事件
