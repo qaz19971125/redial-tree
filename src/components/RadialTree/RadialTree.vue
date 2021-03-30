@@ -1,6 +1,10 @@
 <template>
   <div style="width: 100%; height: 100%; position: relative">
-    <tool-bar ref="toolBar" @update-chart="draw"></tool-bar>
+    <tool-bar
+      ref="toolBar"
+      @update-chart="draw"
+      @center-chart="centerChart"
+    ></tool-bar>
     <svg :id="`radial-tree-${id}`" class="radial-tree-container">
       <!-- 这里定义八大主题节点样式 -->
       <defs></defs>
