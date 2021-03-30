@@ -211,7 +211,7 @@ export default {
       const y = treeContainerHeight / 2
       treeContainer
         .transition()
-        .duration(this.durationBase * 10)
+        .duration(this.durationBase * 5)
         .call(
           zoomListener.transform,
           d3.zoomIdentity.translate(x, y).scale(zoomScaleNow)
