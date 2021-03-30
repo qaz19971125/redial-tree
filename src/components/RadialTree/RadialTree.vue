@@ -1,20 +1,25 @@
 <template>
-  <svg :id="`radial-tree-${id}`" class="radial-tree-container">
-    <!-- 这里定义八大主题节点样式 -->
-    <defs></defs>
-    <g class="radial-tree-content">
-      <g class="radial-tree-node"></g>
-      <g class="radial-tree-link"></g>
-    </g>
-  </svg>
+  <div style="width: 100%; height: 100%; position: relative">
+    <tool-bar ref="toolBar" @update-chart="draw"></tool-bar>
+    <svg :id="`radial-tree-${id}`" class="radial-tree-container">
+      <!-- 这里定义八大主题节点样式 -->
+      <defs></defs>
+      <g class="radial-tree-content">
+        <g class="radial-tree-node"></g>
+        <g class="radial-tree-link"></g>
+      </g>
+    </svg>
+  </div>
 </template>
 
 <script>
 import * as d3 from 'd3'
 import zoomMixins from './mixins/zoomMixins'
+
+import ToolBar from './ToolBar.vue'
 export default {
   name: 'RadialTree',
-  components: {},
+  components: { ToolBar },
   mixins: [zoomMixins],
   props: {
     id: {
@@ -82,7 +87,7 @@ export default {
       }
       this.treeLayoutCalculator(this.treeRoot)
     },
-    initData(initialDepth = 2) {
+    initData(initialDepth = 1) {
       this.treeRoot = d3
         .hierarchy(this.data)
         .sort((a, b) => d3.ascending(a.data.name, b.data.name))
@@ -287,7 +292,7 @@ export default {
         })
     },
     handleNodeClick(e, d) {
-      // TODO: 给点击的节点一个点击效果
+      this.pushHistory(d)
       d.children = d.children ? null : d._children
       this.durationRate = 1
       this.limitMaximumVisibleNodes(40, d)
@@ -312,12 +317,14 @@ export default {
         })
       }
     },
+    pushHistory(data) {
+      this.$refs.toolBar.$emit('pushStack', data)
+    },
   },
 }
 </script>
 <style lang="scss">
 .radial-tree-container {
-  position: relative;
   width: 100%;
   height: 100%;
 }
