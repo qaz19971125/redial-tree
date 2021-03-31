@@ -100,7 +100,7 @@ export default {
       })
     },
     /**
-     * @param source - 源节点，表示从哪个节点开始绘图
+     * @param source - 表示从哪个节点开始绘图
      */
     draw(source, firstDraw = false) {
       // 计算树布局
@@ -117,9 +117,7 @@ export default {
         d.lastY = d.y
       })
     },
-    /**
-     * 绘制节点
-     */
+
     drawNodes(source) {
       const { treeContent } = this
       const nodes = this.treeRoot.descendants()
@@ -175,9 +173,7 @@ export default {
         .selectAll('text')
         .attr('transform', (d) => `rotate(${-((d.x * 180) / Math.PI - 90)})`)
     },
-    /**
-     * 绘制边
-     */
+
     drawLinks() {
       const { treeContent } = this
       const links = this.treeRoot.links()
@@ -201,9 +197,7 @@ export default {
         .duration(this.durationBase)
         .attr('d', this.diagonal)
     },
-    /**
-     * 居中画布
-     */
+
     centerChart() {
       const {
         treeContainer,
@@ -221,12 +215,14 @@ export default {
           d3.zoomIdentity.translate(x, y).scale(0.2)
         )
     },
+
     diagonal(link) {
       return d3
         .linkRadial()
         .angle((d) => d.x)
         .radius((d) => d.y)(link)
     },
+
     /**
      * 为节点绑定事件
      */
