@@ -44,16 +44,12 @@ export default {
       // 2. 再经过treeLayoutCalculator()处理
       treeRoot: null,
       nodeRadius: 10,
-      durationBase: 300,
-      durationRate: 1,
+      durationBase: 500,
     }
   },
   computed: {
     treeRadius() {
       return this.treeContainerWidth
-    },
-    duration() {
-      return this.durationBase * this.durationRate
     },
   },
   watch: {},
@@ -158,7 +154,7 @@ export default {
 
       nodeUpdate
         .transition()
-        .duration(this.duration)
+        .duration(this.durationBase)
         .attr(
           'transform',
           (d) => `
@@ -188,7 +184,10 @@ export default {
 
       linkExit.remove()
 
-      linkUpdate.transition().duration(this.duration).attr('d', this.diagonal)
+      linkUpdate
+        .transition()
+        .duration(this.durationBase)
+        .attr('d', this.diagonal)
 
       // 缓存各节点旧的位置
       this.treeRoot.each((d) => {
@@ -205,7 +204,6 @@ export default {
         treeContainerWidth,
         treeContainerHeight,
         zoomListener,
-        zoomScaleNow,
       } = this
       const x = treeContainerWidth / 2
       const y = treeContainerHeight / 2
@@ -214,7 +212,7 @@ export default {
         .duration(this.durationBase * 5)
         .call(
           zoomListener.transform,
-          d3.zoomIdentity.translate(x, y).scale(zoomScaleNow)
+          d3.zoomIdentity.translate(x, y).scale(0.2)
         )
     },
     diagonal(link) {
@@ -298,19 +296,16 @@ export default {
     handleNodeClick(e, d) {
       this.pushHistory(d)
       d.children = d.children ? null : d._children
-      this.durationRate = 1
       this.limitMaximumVisibleNodes(40, d)
       this.draw(d)
     },
     /**
      * 限制显示的节点数量
-     * 若触发剪枝操作，延长duration
      */
     limitMaximumVisibleNodes(max, node) {
       const descendants = this.treeRoot.descendants()
       const currentNodeCount = descendants.length + (node.children || []).length
       if (currentNodeCount >= max) {
-        this.durationRate = 4 // 延长duration
         const ancestors = node.ancestors()
         this.treeRoot.eachBefore((currentNode) => {
           // 从根节点开始做先序遍历，做剪枝操作
