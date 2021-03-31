@@ -103,18 +103,26 @@ export default {
      * @param source - 源节点，表示从哪个节点开始绘图
      */
     draw(source, firstDraw = false) {
-      const that = this
-      const { treeContent } = this
-      const nodes = this.treeRoot.descendants()
-      const links = this.treeRoot.links()
       // 计算树布局
       this.calculateLayout()
       if (firstDraw) {
         source.lastX = source.x
         source.lastY = source.y
       }
-      // 更新节点
-      // TODO: 不同类型的节点颜色不同
+      this.drawNodes(source)
+      this.drawLinks()
+      // 缓存各节点旧的位置
+      this.treeRoot.each((d) => {
+        d.lastX = d.x
+        d.lastY = d.y
+      })
+    },
+    /**
+     * 绘制节点
+     */
+    drawNodes(source) {
+      const { treeContent } = this
+      const nodes = this.treeRoot.descendants()
       const node = treeContent
         .select('.radial-tree-node')
         .selectAll('g.node')
@@ -166,9 +174,13 @@ export default {
       nodeUpdate
         .selectAll('text')
         .attr('transform', (d) => `rotate(${-((d.x * 180) / Math.PI - 90)})`)
-
-      // 更新线
-      // TODO: 不同类型的线颜色不同
+    },
+    /**
+     * 绘制边
+     */
+    drawLinks() {
+      const { treeContent } = this
+      const links = this.treeRoot.links()
       const link = treeContent
         .select('.radial-tree-link')
         .selectAll('path')
@@ -188,12 +200,6 @@ export default {
         .transition()
         .duration(this.durationBase)
         .attr('d', this.diagonal)
-
-      // 缓存各节点旧的位置
-      this.treeRoot.each((d) => {
-        d.lastX = d.x
-        d.lastY = d.y
-      })
     },
     /**
      * 居中画布
