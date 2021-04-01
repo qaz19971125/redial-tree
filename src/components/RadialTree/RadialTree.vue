@@ -296,15 +296,20 @@ export default {
         })
     },
     handleNodeClick(e, d) {
-      this.pushHistory(d)
       d.children = d.children ? null : d._children
-      this.limitMaximumVisibleNodes(40, d)
+      const prunedNodes = this.limitMaximumVisibleNodes(40, d)
+      this.pushHistory({
+        node: d,
+        prunedNodes,
+      })
       this.draw(d)
     },
     /**
      * 限制显示的节点数量
+     * @returns {Array} prunedNodes - 进行了剪枝操作的节点组成的数组
      */
     limitMaximumVisibleNodes(max, node) {
+      const prunedNodes = []
       const descendants = this.treeRoot.descendants()
       const currentNodeCount = descendants.length + (node.children || []).length
       if (currentNodeCount >= max) {
@@ -314,9 +319,12 @@ export default {
           // 被剪枝的节点是node的同级节点
           if (currentNode.children && !ancestors.includes(currentNode)) {
             currentNode.children = null
+            prunedNodes.push(currentNode)
           }
         })
       }
+
+      return prunedNodes
     },
     pushHistory(data) {
       this.$refs.toolBar.$emit('pushStack', data)

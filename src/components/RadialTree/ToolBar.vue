@@ -73,24 +73,28 @@ export default {
   },
   methods: {
     redo() {
-      const currentTarget = this.redoStack.pop()
-      if (currentTarget) {
-        this.pushStack(currentTarget, 'undo')
-        currentTarget.children = currentTarget.children
-          ? null
-          : currentTarget._children
+      const currentData = this.redoStack.pop()
+      if (currentData) {
+        this.pushStack(currentData, 'undo')
+        const { node, prunedNodes } = currentData
+        this.toggleChildren(node)
+        prunedNodes.forEach((d) => {
+          this.toggleChildren(d)
+        })
+        this.$emit('update-chart', node)
       }
-      this.$emit('update-chart', currentTarget)
     },
     undo() {
-      const currentTarget = this.undoStack.pop()
-      if (currentTarget) {
-        this.pushStack(currentTarget, 'redo')
-        currentTarget.children = currentTarget.children
-          ? null
-          : currentTarget._children
+      const currentData = this.undoStack.pop()
+      if (currentData) {
+        this.pushStack(currentData, 'redo')
+        const { node, prunedNodes } = currentData
+        this.toggleChildren(node)
+        prunedNodes.forEach((d) => {
+          this.toggleChildren(d)
+        })
+        this.$emit('update-chart', node)
       }
-      this.$emit('update-chart', currentTarget)
     },
     pushStack(data, stackType = 'undo') {
       if (stackType === 'undo') {
@@ -98,6 +102,9 @@ export default {
       } else {
         this.redoStack.push(data)
       }
+    },
+    toggleChildren(d) {
+      d.children = d.children ? null : d._children
     },
   },
 }
