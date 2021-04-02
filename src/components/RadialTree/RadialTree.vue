@@ -1,10 +1,11 @@
 <template>
-  <div style="width: 100%; height: 100%; position: relative">
+  <div style="width: 100%; height: 100%; position: relative; user-select: none">
     <tool-bar
       ref="toolBar"
       @update-chart="draw"
       @center-chart="centerChart"
     ></tool-bar>
+    <tool-tip v-model="toolTipVisiblity" :position="toolTipPosition"></tool-tip>
     <svg :id="`radial-tree-${id}`" class="radial-tree-container">
       <!-- 这里定义八大主题节点样式 -->
       <defs></defs>
@@ -21,9 +22,10 @@ import * as d3 from 'd3'
 import zoomMixins from './mixins/zoomMixins'
 
 import ToolBar from './ToolBar.vue'
+import ToolTip from './ToolTip.vue'
 export default {
   name: 'RadialTree',
-  components: { ToolBar },
+  components: { ToolBar, ToolTip },
   mixins: [zoomMixins],
   props: {
     id: {
@@ -37,6 +39,8 @@ export default {
   },
   data() {
     return {
+      toolTipVisiblity: false,
+      toolTipPosition: { x: 0, y: 0 },
       // d3.tree()生成的树布局构造器，一个function
       treeLayoutCalculator: null,
       // 树图根节点
@@ -261,6 +265,8 @@ export default {
             .classed('highlight', true)
             .select('circle')
             .attr('fill', '#1493C8')
+          // tooltip
+          that.toolTipVisiblity = true
         })
         .on('mouseleave', function(e, d) {
           // hover缩小动效
@@ -293,6 +299,12 @@ export default {
             .classed('highlight', false)
             .select('circle')
             .attr('fill', (d) => (d._children ? '#555' : '#999'))
+          // tooltip
+          that.toolTipVisiblity = false
+        })
+        .on('mousemove', function(e, d) {
+          that.toolTipPosition.x = e.offsetX + 10
+          that.toolTipPosition.y = e.offsetY + 10
         })
     },
     handleNodeClick(e, d) {
