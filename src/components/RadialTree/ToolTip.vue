@@ -7,7 +7,7 @@
       top: `${position.y}px`,
     }"
   >
-    <li>tooltip</li>
+    <slot :data="data"></slot>
   </ul>
 </template>
 

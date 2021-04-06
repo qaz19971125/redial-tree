@@ -5,7 +5,15 @@
       @update-chart="draw"
       @center-chart="centerChart"
     ></tool-bar>
-    <tool-tip v-model="toolTipVisiblity" :position="toolTipPosition"></tool-tip>
+    <tool-tip
+      v-model="toolTipVisiblity"
+      :position="toolTipPosition"
+      :data="toolTipData"
+    >
+      <template #default="{ data }">
+        <li>{{ data.name || '' }}</li>
+      </template>
+    </tool-tip>
     <svg :id="`radial-tree-${id}`" class="radial-tree-container">
       <!-- 这里定义八大主题节点样式 -->
       <defs></defs>
@@ -23,25 +31,26 @@ import zoomMixins from './mixins/zoomMixins'
 
 import ToolBar from './ToolBar.vue'
 import ToolTip from './ToolTip.vue'
+
+let id = 0
+
 export default {
   name: 'RadialTree',
   components: { ToolBar, ToolTip },
   mixins: [zoomMixins],
   props: {
-    id: {
-      type: Number,
-      required: true,
-    },
     data: {
       type: Object,
       required: true,
     },
+    cluster: Boolean,
   },
   data() {
     return {
       toolTipVisiblity: false,
       toolTipPosition: { x: 0, y: 0 },
-      // d3.tree()生成的树布局构造器，一个function
+      toolTipData: {},
+      // 树布局计算器
       treeLayoutCalculator: null,
       // 树图根节点
       // 1. 先经过d3.hierarchy()处理
@@ -52,6 +61,9 @@ export default {
     }
   },
   computed: {
+    id() {
+      return id++
+    },
     treeRadius() {
       return this.treeContainerWidth
     },
@@ -63,8 +75,8 @@ export default {
 
       this.treeContainer = d3.select(`#radial-tree-${this.id}`)
       this.treeContent = this.treeContainer.select('g.radial-tree-content')
-      this.treeLayoutCalculator = d3
-        .cluster()
+      this.treeLayoutCalculator = this.cluster ? d3.cluster() : d3.tree()
+      this.treeLayoutCalculator
         .size([2 * Math.PI, this.treeRadius - 100])
         // 该布局计算得到极坐标。x表示弧度制角度，y表示到圆心的距离。因此在绘图时要转化到直角坐标系。
         // 用x控制rotate，用y控制translate
@@ -105,9 +117,9 @@ export default {
     },
     /**
      * @param source - 表示从哪个节点开始绘图
+     * @param firstDraw - 是否第一次绘制
      */
     draw(source, firstDraw = false) {
-      // 计算树布局
       this.calculateLayout()
       if (firstDraw) {
         source.lastX = source.x
@@ -191,7 +203,7 @@ export default {
       const linkUpdate = link.merge(linkEnter)
 
       linkEnter.attr('d', (d) => {
-        return this.diagonal({ source: d.source, target: d.source })
+        return this.calculateLink({ source: d.source, target: d.source })
       })
 
       linkExit.remove()
@@ -199,7 +211,7 @@ export default {
       linkUpdate
         .transition()
         .duration(this.durationBase)
-        .attr('d', this.diagonal)
+        .attr('d', this.calculateLink)
     },
 
     centerChart() {
@@ -220,7 +232,7 @@ export default {
         )
     },
 
-    diagonal(link) {
+    calculateLink(link) {
       return d3
         .linkRadial()
         .angle((d) => d.x)
@@ -233,7 +245,15 @@ export default {
     bindNodeEvent(nodeSelection, ...args) {
       const that = this
       nodeSelection
-        .on('click', this.handleNodeClick.bind(this))
+        .on('click', function(e, d) {
+          d.children = d.children ? null : d._children
+          const prunedNodes = that.limitMaximumVisibleNodes(40, d)
+          that.pushHistory({
+            node: d,
+            prunedNodes,
+          })
+          that.draw(d)
+        })
         .on('mouseenter', function(e, d) {
           // hover放大动效
           const circle = d3.select(this).select('circle')
@@ -267,6 +287,9 @@ export default {
             .attr('fill', '#1493C8')
           // tooltip
           that.toolTipVisiblity = true
+          that.toolTipData = {
+            name: d.data.name,
+          } // TODO: tooltip展示什么信息？可以通过props配置？
         })
         .on('mouseleave', function(e, d) {
           // hover缩小动效
@@ -306,15 +329,6 @@ export default {
           that.toolTipPosition.x = e.offsetX + 10
           that.toolTipPosition.y = e.offsetY + 10
         })
-    },
-    handleNodeClick(e, d) {
-      d.children = d.children ? null : d._children
-      const prunedNodes = this.limitMaximumVisibleNodes(40, d)
-      this.pushHistory({
-        node: d,
-        prunedNodes,
-      })
-      this.draw(d)
     },
     /**
      * 限制显示的节点数量
