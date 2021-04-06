@@ -6,6 +6,7 @@
       @center-chart="centerChart"
     ></tool-bar>
     <tool-tip
+      v-if="enableTooltip"
       v-model="toolTipVisiblity"
       :position="toolTipPosition"
       :data="toolTipData"
@@ -44,6 +45,10 @@ export default {
       required: true,
     },
     cluster: Boolean,
+    enableTooltip: {
+      type: Boolean,
+      default: true,
+    },
   },
   data() {
     return {
@@ -285,11 +290,6 @@ export default {
             .classed('highlight', true)
             .select('circle')
             .attr('fill', '#1493C8')
-          // tooltip
-          that.toolTipVisiblity = true
-          that.toolTipData = {
-            name: d.data.name,
-          } // TODO: tooltip展示什么信息？可以通过props配置？
         })
         .on('mouseleave', function(e, d) {
           // hover缩小动效
@@ -322,13 +322,23 @@ export default {
             .classed('highlight', false)
             .select('circle')
             .attr('fill', (d) => (d._children ? '#555' : '#999'))
-          // tooltip
-          that.toolTipVisiblity = false
         })
-        .on('mousemove', function(e, d) {
-          that.toolTipPosition.x = e.offsetX + 10
-          that.toolTipPosition.y = e.offsetY + 10
-        })
+      if (this.enableTooltip) {
+        nodeSelection
+          .on('mouseenter.tooltip', function(e, d) {
+            that.toolTipVisiblity = true
+            that.toolTipData = {
+              name: d.data.name,
+            } // TODO: tooltip展示什么信息？可以通过props配置？
+          })
+          .on('mouseleave.tooltip', function(e, d) {
+            that.toolTipVisiblity = false
+          })
+          .on('mousemove.tooltip', function(e, d) {
+            that.toolTipPosition.x = e.offsetX + 10
+            that.toolTipPosition.y = e.offsetY + 10
+          })
+      }
     },
     /**
      * 限制显示的节点数量
