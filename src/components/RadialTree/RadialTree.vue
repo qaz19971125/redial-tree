@@ -330,13 +330,11 @@ export default {
             that.toolTipData = {
               name: d.data.name,
             } // TODO: tooltip展示什么信息？可以通过props配置？
+            that.toolTipPosition.x = e.offsetX + 10
+            that.toolTipPosition.y = e.offsetY + 10
           })
           .on('mouseleave.tooltip', function(e, d) {
             that.toolTipVisiblity = false
-          })
-          .on('mousemove.tooltip', function(e, d) {
-            that.toolTipPosition.x = e.offsetX + 10
-            that.toolTipPosition.y = e.offsetY + 10
           })
       }
     },
