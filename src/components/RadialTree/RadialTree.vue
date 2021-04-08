@@ -323,18 +323,26 @@ export default {
         nodeSelection
           .on('mouseenter.tooltip', function(e, d) {
             let tooltipInstance = tooltipMap.get(d)
-            tooltipInstance = tooltipInstance || new TooltipCtor()
-            tooltipInstance.showTooltip = true
-            tooltipInstance.currentPosition = {
-              x: e.offsetX + 10,
-              y: e.offsetY + 10,
+            if (tooltipInstance) {
+              tooltipInstance.showTooltip = true
+              tooltipInstance.currentPosition = {
+                x: e.offsetX + 10,
+                y: e.offsetY + 10,
+              }
+            } else {
+              tooltipInstance = new TooltipCtor()
+              tooltipInstance.showTooltip = true
+              tooltipInstance.currentPosition = {
+                x: e.offsetX + 10,
+                y: e.offsetY + 10,
+              }
+              tooltipInstance.data = {
+                name: d.data.name,
+              } // TODO: 展示哪些信息？
+              tooltipMap.set(d, tooltipInstance)
+              const tooltipVm = tooltipInstance.$mount()
+              that.$refs.container.appendChild(tooltipVm.$el)
             }
-            tooltipInstance.data = {
-              name: d.data.name,
-            } // TODO: 展示哪些信息？
-            tooltipMap.set(d, tooltipInstance)
-            const tooltipVm = tooltipInstance.$mount()
-            that.$refs.container.appendChild(tooltipVm.$el)
           })
           .on('mouseleave.tooltip', function(e, d) {
             const tooltipInstance = tooltipMap.get(d)

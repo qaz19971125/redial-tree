@@ -1,7 +1,7 @@
 <template>
   <transition name="fade-in-linear">
     <div
-      v-if="showTooltip || fixedTooltip"
+      v-show="showTooltip || fixedTooltip"
       class="tooltip"
       :style="{
         left: `${currentPosition.x}px`,
@@ -21,7 +21,7 @@
         ></i>
       </div>
       <ul class="tooltip__list">
-        <slot :data="data"></slot>
+        <li>{{ data.name }}</li>
       </ul>
     </div>
   </transition>
@@ -37,7 +37,7 @@ export default {
     return {
       showTooltip: false,
       fixedTooltip: false,
-      data: null,
+      data: {},
       currentPosition: {
         x: 0,
         y: 0,
