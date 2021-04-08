@@ -1,6 +1,7 @@
 <template>
   <div
     ref="container"
+    class="radial-tree"
     style="width: 100%; height: 100%; position: relative; user-select: none"
   >
     <tool-bar
@@ -8,12 +9,12 @@
       @update-chart="draw"
       @center-chart="centerChart"
     ></tool-bar>
-    <svg :id="`radial-tree-${id}`" class="radial-tree-container">
+    <svg :id="id" class="chart-container">
       <!-- 这里定义八大主题节点样式 -->
       <defs></defs>
-      <g class="radial-tree-content">
-        <g class="radial-tree-node"></g>
-        <g class="radial-tree-link"></g>
+      <g class="chart-content">
+        <g class="chart-node"></g>
+        <g class="chart-link"></g>
       </g>
     </svg>
   </div>
@@ -22,10 +23,10 @@
 <script>
 import Vue from 'vue'
 import * as d3 from 'd3'
-import zoomMixins from './mixins/zoomMixins'
+import zoomMixins from '../mixins/zoomMixins'
 
 import ToolBar from './ToolBar.vue'
-import ToolTip from './ToolTip.vue'
+import ToolTip from '../ToolTip.vue'
 
 const TooltipCtor = Vue.extend(ToolTip)
 const tooltipMap = new Map()
@@ -63,19 +64,19 @@ export default {
   },
   computed: {
     id() {
-      return id++
+      return `radial-tree-${id++}`
     },
     treeRadius() {
-      return this.treeContainerWidth
+      return this.chartContainerWidth
     },
   },
   watch: {},
   mounted() {
     this.$nextTick(() => {
-      this.getTreeContainerSize()
+      this.getChartContainerSize()
 
-      this.treeContainer = d3.select(`#radial-tree-${this.id}`)
-      this.treeContent = this.treeContainer.select('g.radial-tree-content')
+      this.chartContainer = d3.select(`#${this.id}`)
+      this.chartContent = this.chartContainer.select('g.chart-content')
       this.treeLayoutCalculator = this.cluster ? d3.cluster() : d3.tree()
       this.treeLayoutCalculator
         .size([2 * Math.PI, this.treeRadius - 100])
@@ -91,11 +92,11 @@ export default {
     })
   },
   methods: {
-    getTreeContainerSize() {
-      const treeContainer = document.querySelector(`#radial-tree-${this.id}`)
+    getChartContainerSize() {
+      const treeContainer = document.querySelector(`#${this.id}`)
       const { width, height } = treeContainer.getBoundingClientRect()
-      this.treeContainerWidth = width
-      this.treeContainerHeight = height
+      this.chartContainerWidth = width
+      this.chartContainerHeight = height
     },
     calculateLayout() {
       if (typeof this.treeLayoutCalculator !== 'function') {
@@ -136,10 +137,10 @@ export default {
     },
 
     drawNodes(source) {
-      const { treeContent } = this
+      const { chartContent } = this
       const nodes = this.treeRoot.descendants()
-      const node = treeContent
-        .select('.radial-tree-node')
+      const node = chartContent
+        .select('.chart-node')
         .selectAll('g.node')
         .data(nodes, (d) => d.id)
 
@@ -192,10 +193,10 @@ export default {
     },
 
     drawLinks() {
-      const { treeContent } = this
+      const { chartContent } = this
       const links = this.treeRoot.links()
-      const link = treeContent
-        .select('.radial-tree-link')
+      const link = chartContent
+        .select('.chart-link')
         .selectAll('path')
         .data(links, (d) => d.target.id)
 
@@ -217,14 +218,14 @@ export default {
 
     centerChart() {
       const {
-        treeContainer,
-        treeContainerWidth,
-        treeContainerHeight,
+        chartContainer,
+        chartContainerWidth,
+        chartContainerHeight,
         zoomListener,
       } = this
-      const x = treeContainerWidth / 2
-      const y = treeContainerHeight / 2
-      treeContainer
+      const x = chartContainerWidth / 2
+      const y = chartContainerHeight / 2
+      chartContainer
         .transition()
         .duration(this.durationBase * 5)
         .call(
@@ -275,12 +276,12 @@ export default {
           const descendants = d.descendants()
           const highlight =
             d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
-          that.treeContent
+          that.chartContent
             .selectAll('path.link')
             .filter((d) => highlight.includes(d.target))
             .classed('highlight', true)
             .attr('stroke', '#1493C8')
-          that.treeContent
+          that.chartContent
             .selectAll('g.node')
             .filter((d) => highlight.includes(d))
             .classed('highlight', true)
@@ -307,12 +308,12 @@ export default {
           const descendants = d.descendants()
           const highlight =
             d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
-          that.treeContent
+          that.chartContent
             .selectAll('path.link')
             .filter((d) => highlight.includes(d.target))
             .classed('highlight', false)
             .attr('stroke', '#555')
-          that.treeContent
+          that.chartContent
             .selectAll('g.node')
             .filter((d) => highlight.includes(d))
             .classed('highlight', false)
@@ -381,11 +382,11 @@ export default {
 }
 </script>
 <style lang="scss">
-.radial-tree-container {
+.chart-container {
   width: 100%;
   height: 100%;
 }
-.radial-tree-link {
+.chart-link {
   stroke: #555;
   stroke-width: 1.5;
   stroke-opacity: 0.4;

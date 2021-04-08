@@ -9,16 +9,16 @@ export default {
   },
   methods: {
     initZoomHandler() {
-      const { treeContent, treeContainer } = this
+      const { chartContent, chartContainer } = this
       this.zoomListener = d3
         .zoom()
         .scaleExtent([0.2, 2]) // 最小比例，最大比例
         .on('zoom', (e) => {
           this.zoomScaleNow = e.transform.k
           // 应用变化
-          treeContent.attr('transform', e.transform)
+          chartContent.attr('transform', e.transform)
         })
-      treeContainer.call(this.zoomListener).on('dblclick.zoom', null) // 阻止双击放大
+      chartContainer.call(this.zoomListener).on('dblclick.zoom', null) // 阻止双击放大
     },
   },
 }
