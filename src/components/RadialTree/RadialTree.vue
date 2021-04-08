@@ -1,20 +1,13 @@
 <template>
-  <div style="width: 100%; height: 100%; position: relative; user-select: none">
+  <div
+    ref="container"
+    style="width: 100%; height: 100%; position: relative; user-select: none"
+  >
     <tool-bar
       ref="toolBar"
       @update-chart="draw"
       @center-chart="centerChart"
     ></tool-bar>
-    <tool-tip
-      v-if="enableTooltip"
-      v-model="toolTipVisiblity"
-      :position="toolTipPosition"
-      :data="toolTipData"
-    >
-      <template #default="{ data }">
-        <li>{{ data.name || '' }}</li>
-      </template>
-    </tool-tip>
     <svg :id="`radial-tree-${id}`" class="radial-tree-container">
       <!-- 这里定义八大主题节点样式 -->
       <defs></defs>
@@ -27,17 +20,20 @@
 </template>
 
 <script>
+import Vue from 'vue'
 import * as d3 from 'd3'
 import zoomMixins from './mixins/zoomMixins'
 
 import ToolBar from './ToolBar.vue'
 import ToolTip from './ToolTip.vue'
 
+const TooltipCtor = Vue.extend(ToolTip)
+const tooltipMap = new Map()
 let id = 0
 
 export default {
   name: 'RadialTree',
-  components: { ToolBar, ToolTip },
+  components: { ToolBar },
   mixins: [zoomMixins],
   props: {
     data: {
@@ -326,15 +322,25 @@ export default {
       if (this.enableTooltip) {
         nodeSelection
           .on('mouseenter.tooltip', function(e, d) {
-            that.toolTipVisiblity = true
-            that.toolTipData = {
+            let tooltipInstance = tooltipMap.get(d)
+            tooltipInstance = tooltipInstance || new TooltipCtor()
+            tooltipInstance.showTooltip = true
+            tooltipInstance.currentPosition = {
+              x: e.offsetX + 10,
+              y: e.offsetY + 10,
+            }
+            tooltipInstance.data = {
               name: d.data.name,
-            } // TODO: tooltip展示什么信息？可以通过props配置？
-            that.toolTipPosition.x = e.offsetX + 10
-            that.toolTipPosition.y = e.offsetY + 10
+            } // TODO: 展示哪些信息？
+            tooltipMap.set(d, tooltipInstance)
+            const tooltipVm = tooltipInstance.$mount()
+            that.$refs.container.appendChild(tooltipVm.$el)
           })
           .on('mouseleave.tooltip', function(e, d) {
-            that.toolTipVisiblity = false
+            const tooltipInstance = tooltipMap.get(d)
+            if (tooltipInstance) {
+              tooltipInstance.showTooltip = false
+            }
           })
       }
     },

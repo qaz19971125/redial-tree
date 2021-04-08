@@ -1,73 +1,112 @@
 <template>
-  <ul
-    v-show="value"
-    class="tooltip"
-    :style="{
-      left: `${position.x}px`,
-      top: `${position.y}px`,
-    }"
-  >
-    <slot :data="data"></slot>
-  </ul>
+  <transition name="fade-in-linear">
+    <div
+      v-if="showTooltip || fixedTooltip"
+      class="tooltip"
+      :style="{
+        left: `${currentPosition.x}px`,
+        top: `${currentPosition.y}px`,
+        cursor: fixedTooltip ? 'move' : 'default',
+      }"
+      @mouseenter="showTooltip = true"
+      @mouseleave="showTooltip = false"
+      @mousedown="handleMouseDown"
+      @mouseup="handleMouseUp"
+    >
+      <div class="tooltip__header">
+        <i
+          class="el-icon-star-on"
+          style="cursor: pointer"
+          @click.stop="fixTooltip"
+        ></i>
+      </div>
+      <ul class="tooltip__list">
+        <slot :data="data"></slot>
+      </ul>
+    </div>
+  </transition>
 </template>
 
 <script>
-// 鼠标移动位置信息在d3提供的事件对象里
-// 节点数据信息在节点绑定的数据上
+// 通过数组管理 tooltip 组件实例
+// 通过触发destroy来移除 tooltip
+// 使用Vue.extend生成构造器，手动调用$mount，然后手动appendChild
 export default {
   name: 'ToolTip',
-  components: {},
-  mixins: [],
-  props: {
-    value: Boolean,
-    /**
-     * 位置信息
-     */
-    position: {
-      type: Object,
-      default() {
-        return {
-          x: 0,
-          y: 0,
-        }
-      },
-    },
-    /**
-     * 展示的数据信息
-     */
-    data: {
-      type: Object,
-      default() {
-        return {}
-      },
-    },
-  },
   data() {
-    return {}
+    return {
+      showTooltip: false,
+      fixedTooltip: false,
+      data: null,
+      currentPosition: {
+        x: 0,
+        y: 0,
+      },
+      lastPosition: {
+        x: 0,
+        y: 0,
+      },
+      mouseDownPosition: {
+        x: 0,
+        y: 0,
+      },
+    }
   },
-  computed: {},
-  watch: {},
-  created() {},
-  mounted() {},
-  beforeCreate() {},
-  beforeMount() {},
-  beforeUpdate() {},
-  updated() {},
-  beforeDestroy() {},
-  destroyed() {},
-  activated() {},
-  methods: {},
+  watch: {
+    fixedTooltip(val) {
+      if (!val) {
+        this.clearUp()
+      }
+    },
+  },
+  beforeDestroy() {
+    this.clearUp()
+  },
+  methods: {
+    fixTooltip() {
+      this.fixedTooltip = !this.fixedTooltip
+    },
+    clearUp() {
+      document.removeEventListener('mousemove', this.handleDrag)
+    },
+    handleDrag(e) {
+      const moveX = e.clientX - this.mouseDownPosition.x
+      const moveY = e.clientY - this.mouseDownPosition.y
+      this.currentPosition.x = this.lastPosition.x + moveX
+      this.currentPosition.y = this.lastPosition.y + moveY
+    },
+    handleMouseDown(e) {
+      if (this.fixedTooltip) {
+        this.lastPosition = { ...this.currentPosition }
+        this.mouseDownPosition = {
+          x: e.clientX,
+          y: e.clientY,
+        }
+        document.addEventListener('mousemove', this.handleDrag)
+      }
+    },
+    handleMouseUp() {
+      this.clearUp()
+    },
+  },
 }
 </script>
 <style lang="scss" scoped>
 .tooltip {
   position: absolute;
-  border: 1px solid #e2e2e2;
-  border-radius: 4px;
   font-size: 12px;
   color: #545454;
   background-color: rgba(255, 255, 255, 0.9);
-  padding: 10px 8px;
-  box-shadow: rgb(174, 174, 174) 0px 0px 10px;
+  border-radius: 4px;
+  border: 1px solid #ebeef5;
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+}
+.tooltip__header {
+  padding: 4px;
+}
+.tooltip__list {
+  margin: 0;
+  list-style: none;
+  padding: 8px;
 }
 </style>
