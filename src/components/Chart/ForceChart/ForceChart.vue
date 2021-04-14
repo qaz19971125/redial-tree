@@ -9,16 +9,15 @@
       <defs>
         <marker
           id="arrow"
+          viewBox="0,0,15,15"
+          markerUnits="strokeWidth"
           markerWidth="10"
           markerHeight="10"
-          :refX="nodeRadius"
+          orient="auto"
+          :refX="10 + nodeRadius"
           refY="5"
         >
-          <path
-            :d="`M${10 / 6},${10 / 6} L${(10 * 5) / 6},${10 / 2} L${10 / 6},${
-              (10 * 5) / 6
-            } L${10 / 2},${10 / 2} L${10 / 6},${10 / 6}`"
-          ></path>
+          <path d="M0,0 L10,5 L0,10 L5,5 Z"></path>
         </marker>
       </defs>
       <g class="chart-content">
@@ -118,6 +117,10 @@ export default {
           'center',
           d3.forceCenter(chartContainerWidth / 2, chartContainerHeight / 2)
         )
+        .force(
+          'collide',
+          d3.forceCollide(50).strength(0.2).iterations(5)
+        )
         .on('tick', this.tick)
     },
     tick() {
@@ -140,6 +143,7 @@ export default {
       nodeUpdate.attr('transform', (d) => `translate(${d.x},${d.y})`)
       nodeExit.remove()
     },
+    // TODO: 目前的线是连接的两圆心，导致了线穿透了圆。如何求出圆上的点坐标？这样可以解决线穿透圆的问题
     drawLinks() {
       const { selfLinks: links, chartContent } = this
       const link = chartContent
@@ -151,12 +155,14 @@ export default {
       const linkExit = link.exit()
       const linkUpdate = link.merge(linkEnter)
 
-      linkUpdate.attr('d', (d) => {
-        const path = d3.path()
-        path.moveTo(d.source.x, d.source.y)
-        path.lineTo(d.target.x, d.target.y)
-        return path.toString()
-      }).attr('marker-end', 'url(#arrow)')
+      linkUpdate
+        .attr('d', (d) => {
+          const path = d3.path()
+          path.moveTo(d.source.x, d.source.y)
+          path.lineTo(d.target.x, d.target.y)
+          return path.toString()
+        })
+        .attr('marker-end', 'url(#arrow)')
       linkExit.remove()
     },
   },
