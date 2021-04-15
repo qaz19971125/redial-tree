@@ -245,30 +245,40 @@ export default {
      * 为节点绑定事件
      */
     bindNodeEvent(nodeSelection, ...args) {
-      const that = this
+      const {
+        durationBase,
+        nodeRadius,
+        chartContent,
+        enableTooltip,
+        $refs,
+
+        limitMaximumVisibleNodes,
+        pushHistory,
+        draw,
+      } = this
       nodeSelection
         .on('click', function(e, d) {
           d.children = d.children ? null : d._children
-          const prunedNodes = that.limitMaximumVisibleNodes(40, d)
-          that.pushHistory({
+          const prunedNodes = limitMaximumVisibleNodes(40, d)
+          pushHistory({
             node: d,
             prunedNodes,
           })
-          that.draw(d)
+          draw(d)
         })
         .on('mouseenter', function(e, d) {
           // hover放大动效
           const circle = d3.select(this).select('circle')
           circle
             .transition()
-            .duration(that.durationBase)
+            .duration(durationBase)
             .attr('r', function(d) {
               const r =
                 d.depth === 0
-                  ? that.nodeRadius * 5
+                  ? nodeRadius * 5
                   : d._children
-                    ? that.nodeRadius * 3
-                    : that.nodeRadius
+                    ? nodeRadius * 3
+                    : nodeRadius
               return r + 10
             })
           // 相关节点和边高亮动效
@@ -276,12 +286,12 @@ export default {
           const descendants = d.descendants()
           const highlight =
             d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
-          that.chartContent
+          chartContent
             .selectAll('path.link')
             .filter((d) => highlight.includes(d.target))
             .classed('highlight', true)
             .attr('stroke', '#1493C8')
-          that.chartContent
+          chartContent
             .selectAll('g.node')
             .filter((d) => highlight.includes(d))
             .classed('highlight', true)
@@ -293,14 +303,14 @@ export default {
           const circle = d3.select(this).select('circle')
           circle
             .transition()
-            .duration(that.durationBase)
+            .duration(durationBase)
             .attr('r', function(d) {
               const r =
                 d.depth === 0
-                  ? that.nodeRadius * 5
+                  ? nodeRadius * 5
                   : d._children
-                    ? that.nodeRadius * 3
-                    : that.nodeRadius
+                    ? nodeRadius * 3
+                    : nodeRadius
               return r
             })
           // 相关节点和边取消高亮动效
@@ -308,19 +318,19 @@ export default {
           const descendants = d.descendants()
           const highlight =
             d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
-          that.chartContent
+          chartContent
             .selectAll('path.link')
             .filter((d) => highlight.includes(d.target))
             .classed('highlight', false)
             .attr('stroke', '#555')
-          that.chartContent
+          chartContent
             .selectAll('g.node')
             .filter((d) => highlight.includes(d))
             .classed('highlight', false)
             .select('circle')
             .attr('fill', (d) => (d._children ? '#555' : '#999'))
         })
-      if (this.enableTooltip) {
+      if (enableTooltip) {
         nodeSelection
           .on('mouseenter.tooltip', function(e, d) {
             let tooltipInstance = tooltipMap.get(d)
@@ -342,7 +352,7 @@ export default {
               } // TODO: 展示哪些信息？
               tooltipMap.set(d, tooltipInstance)
               const tooltipVm = tooltipInstance.$mount()
-              that.$refs.container.appendChild(tooltipVm.$el)
+              $refs.container.appendChild(tooltipVm.$el)
             }
           })
           .on('mouseleave.tooltip', function(e, d) {
