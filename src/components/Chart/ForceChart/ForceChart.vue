@@ -29,16 +29,23 @@
 </template>
 
 <script>
+import Vue from 'vue'
 import * as d3 from 'd3'
 import cloneDeep from 'lodash/cloneDeep'
 import zoomMixins from '../mixins/zoomMixins'
 import dragMixins from './mixins/dragMixins'
+import activateRelationMixins from './mixins/activateRelationMixins'
+
+import ToolTip from '../ToolTip.vue'
+const TooltipCtor = Vue.extend(ToolTip)
+const tooltipMap = new Map()
+
 let id = 0
 
 export default {
   name: 'ForceChart',
   components: {},
-  mixins: [zoomMixins, dragMixins],
+  mixins: [zoomMixins, dragMixins, activateRelationMixins],
   props: {
     nodes: {
       type: Array,
@@ -63,6 +70,10 @@ export default {
     velocityDecay: {
       type: Number,
       default: 0.4,
+    },
+    enableTooltip: {
+      type: Boolean,
+      default: true,
     },
   },
   data() {
@@ -117,10 +128,7 @@ export default {
           'center',
           d3.forceCenter(chartContainerWidth / 2, chartContainerHeight / 2)
         )
-        .force(
-          'collide',
-          d3.forceCollide(50).strength(0.2).iterations(5)
-        )
+        .force('collide', d3.forceCollide(50).strength(0.2).iterations(5))
         .on('tick', this.tick)
     },
     tick() {
@@ -138,7 +146,7 @@ export default {
       const nodeExit = node.exit()
       const nodeUpdate = node.merge(nodeEnter)
 
-      nodeEnter.call(this.dragHandler) // 绑定事件
+      nodeEnter.call(this.bindNodeEvent).call(this.dragHandler) // 绑定事件
       nodeEnter.append('circle').attr('fill', '#555').attr('r', nodeRadius)
       nodeUpdate.attr('transform', (d) => `translate(${d.x},${d.y})`)
       nodeExit.remove()
@@ -149,7 +157,7 @@ export default {
       const link = chartContent
         .select('.chart-link')
         .selectAll('path')
-        .data(links, (d) => d.target.id)
+        .data(links, (d) => d.index)
 
       const linkEnter = link.enter().append('path').classed('link', true)
       const linkExit = link.exit()
@@ -164,6 +172,45 @@ export default {
         })
         .attr('marker-end', 'url(#arrow)')
       linkExit.remove()
+    },
+    bindNodeEvent(selection) {
+      const { selfLinks: links, enableTooltip, $refs } = this
+
+      selection
+        .on('mouseenter', (e, d) => this.setAllItemStates(d, links))
+        .on('mouseleave', this.clearAllItemStates)
+      if (enableTooltip) {
+        selection
+          .on('mouseenter.tooltip', function(e, d) {
+            let tooltipInstance = tooltipMap.get(d)
+            if (tooltipInstance) {
+              tooltipInstance.showTooltip = true
+              tooltipInstance.currentPosition = {
+                x: e.offsetX + 10,
+                y: e.offsetY + 10,
+              }
+            } else {
+              tooltipInstance = new TooltipCtor()
+              tooltipInstance.showTooltip = true
+              tooltipInstance.currentPosition = {
+                x: e.offsetX + 10,
+                y: e.offsetY + 10,
+              }
+              tooltipInstance.data = {
+                name: d.id,
+              } // TODO: 展示哪些信息？
+              tooltipMap.set(d, tooltipInstance)
+              const tooltipVm = tooltipInstance.$mount()
+              $refs.container.appendChild(tooltipVm.$el)
+            }
+          })
+          .on('mouseleave.tooltip', function(e, d) {
+            const tooltipInstance = tooltipMap.get(d)
+            if (tooltipInstance) {
+              tooltipInstance.showTooltip = false
+            }
+          })
+      }
     },
   },
 }
@@ -181,10 +228,17 @@ export default {
   pointer-events: none;
 }
 .node {
+  cursor: pointer;
+  &.inactive {
+    opacity: 0.2;
+  }
 }
 .link {
   &.highlight {
     stroke-width: 5;
+  }
+  &.inactive {
+    opacity: 0.2;
   }
 }
 </style>
