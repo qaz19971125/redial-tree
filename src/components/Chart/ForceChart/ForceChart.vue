@@ -228,12 +228,14 @@ export default {
   pointer-events: none;
 }
 .node {
+  transition: opacity .3s;
   cursor: pointer;
   &.inactive {
     opacity: 0.2;
   }
 }
 .link {
+  transition: opacity .3s;
   &.highlight {
     stroke-width: 5;
   }
