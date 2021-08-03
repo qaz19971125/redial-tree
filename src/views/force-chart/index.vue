@@ -1,12 +1,17 @@
 <template>
-  <force-chart :nodes="nodes" :links="links"></force-chart>
+  <div class="app-content">
+    <force-chart :nodes="nodes" :links="links"></force-chart>
+  </div>
 </template>
 
 <script>
 import ForceChart from '@/components/Chart/ForceChart/ForceChart.vue'
+
 export default {
-  name: '123',
-  components: { ForceChart },
+  name: 'Dashboard',
+  components: {
+    ForceChart,
+  },
   data() {
     return {
       nodes: [
@@ -348,4 +353,3 @@ export default {
   },
 }
 </script>
-<style lang="scss" scoped></style>
