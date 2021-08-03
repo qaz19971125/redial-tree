@@ -15,7 +15,7 @@
     >
       <div class="tooltip__header">
         <i
-          class="el-icon-star-on"
+          :class="fixedTooltip ? 'el-icon-star-on' : 'el-icon-star-off'"
           style="cursor: pointer"
           @click.stop="fixTooltip"
         ></i>

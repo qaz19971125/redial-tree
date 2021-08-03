@@ -10,7 +10,6 @@
       @center-chart="centerChart"
     ></tool-bar>
     <svg :id="id" class="chart-container">
-      <!-- 这里定义八大主题节点样式 -->
       <defs></defs>
       <g class="chart-content">
         <g class="chart-node"></g>
@@ -70,40 +69,40 @@ export default {
       return this.chartContainerWidth
     },
   },
-  watch: {},
+  watch: {
+    data() {
+      this.initData()
+      this.draw(this.treeRoot, true /* firstDraw */)
+      this.centerChart()
+    },
+  },
   mounted() {
     this.$nextTick(() => {
       this.getChartContainerSize()
 
       this.chartContainer = d3.select(`#${this.id}`)
       this.chartContent = this.chartContainer.select('g.chart-content')
+
       this.treeLayoutCalculator = this.cluster ? d3.cluster() : d3.tree()
       this.treeLayoutCalculator
         .size([2 * Math.PI, this.treeRadius - 100])
-        // 该布局计算得到极坐标。x表示弧度制角度，y表示到圆心的距离。因此在绘图时要转化到直角坐标系。
+        // 该布局计算得到极坐标。x表示弧度制角度，y表示到圆心的距离。
         // 用x控制rotate，用y控制translate
         .separation((a, b) => (a.parent === b.parent ? 1 : 3) / a.depth)
 
-      this.initData()
       this.initZoomHandler()
 
-      this.draw(this.treeRoot, true)
+      this.initData()
+      this.draw(this.treeRoot, true /* firstDraw */)
       this.centerChart()
     })
   },
   methods: {
     getChartContainerSize() {
-      const treeContainer = document.querySelector(`#${this.id}`)
-      const { width, height } = treeContainer.getBoundingClientRect()
+      const chartContainer = document.querySelector(`#${this.id}`)
+      const { width, height } = chartContainer.getBoundingClientRect()
       this.chartContainerWidth = width
       this.chartContainerHeight = height
-    },
-    calculateLayout() {
-      if (typeof this.treeLayoutCalculator !== 'function') {
-        console.warn(`[RadialTree]: treeLayoutCalculator必须为一个函数`)
-        throw new Error('[RadialTree]: treeLayoutCalculator必须为一个函数')
-      }
-      this.treeLayoutCalculator(this.treeRoot)
     },
     initData(initialDepth = 1) {
       this.treeRoot = d3
@@ -117,18 +116,29 @@ export default {
         }
       })
     },
+    calculateLayout() {
+      if (typeof this.treeLayoutCalculator !== 'function') {
+        console.warn(`[RadialTree]: treeLayoutCalculator必须为一个函数`)
+        return
+      }
+      this.treeLayoutCalculator(this.treeRoot) // 经过计算后，每一节点对象都拥有了x和y这两个属性
+    },
     /**
      * @param source - 表示从哪个节点开始绘图
      * @param firstDraw - 是否第一次绘制
      */
     draw(source, firstDraw = false) {
       this.calculateLayout()
+
       if (firstDraw) {
+        // 从根节点第一次渲染，先缓存初始位置
         source.lastX = source.x
         source.lastY = source.y
       }
+
       this.drawNodes(source)
       this.drawLinks()
+
       // 缓存各节点旧的位置
       this.treeRoot.each((d) => {
         d.lastX = d.x
@@ -140,7 +150,7 @@ export default {
       const { chartContent } = this
       const nodes = this.treeRoot.descendants()
       const node = chartContent
-        .select('.chart-node')
+        .select('g.chart-node')
         .selectAll('g.node')
         .data(nodes, (d) => d.id)
 
@@ -153,7 +163,7 @@ export default {
         .attr(
           'transform',
           (d) =>
-            `rotate(${(source.lastX * 180) / Math.PI - 90}) translate(${
+            `rotate(${calcDeg(source.lastX)}) translate(${
               source.lastY
             },0)`
         )
@@ -164,15 +174,18 @@ export default {
         .attr('fill', (d) => (d._children ? '#555' : '#999'))
         .attr('r', (d) => {
           if (d.depth === 0) {
+            // 根节点
             return this.nodeRadius * 5
           } else if (d._children) {
+            // 有后代的节点
             return this.nodeRadius * 3
           } else {
+            // 叶子节点
             return this.nodeRadius
           }
         })
 
-      nodeEnter.append('text').text((d) => d.id)
+      nodeEnter.append('text').text((d) => d.data.name)
 
       nodeExit.remove()
 
@@ -182,65 +195,20 @@ export default {
         .attr(
           'transform',
           (d) => `
-        rotate(${(d.x * 180) / Math.PI - 90})
+        rotate(${calcDeg(d.x)})
         translate(${d.y},0)
       `
         )
       // 字体回正
       nodeUpdate
         .selectAll('text')
-        .attr('transform', (d) => `rotate(${-((d.x * 180) / Math.PI - 90)})`)
+        .attr('transform', (d) => `rotate(${-calcDeg(d.x)})`)
+
+      function calcDeg(radian) {
+        // 先弧度转角度，再顺时针旋转90度
+        return (radian * 180) / Math.PI - 90
+      }
     },
-
-    drawLinks() {
-      const { chartContent } = this
-      const links = this.treeRoot.links()
-      const link = chartContent
-        .select('.chart-link')
-        .selectAll('path')
-        .data(links, (d) => d.target.id)
-
-      const linkEnter = link.enter().append('path').classed('link', true)
-      const linkExit = link.exit()
-      const linkUpdate = link.merge(linkEnter)
-
-      linkEnter.attr('d', (d) => {
-        return this.calculateLink({ source: d.source, target: d.source })
-      })
-
-      linkExit.remove()
-
-      linkUpdate
-        .transition()
-        .duration(this.durationBase)
-        .attr('d', this.calculateLink)
-    },
-
-    centerChart() {
-      const {
-        chartContainer,
-        chartContainerWidth,
-        chartContainerHeight,
-        zoomListener,
-      } = this
-      const x = chartContainerWidth / 2
-      const y = chartContainerHeight / 2
-      chartContainer
-        .transition()
-        .duration(this.durationBase * 5)
-        .call(
-          zoomListener.transform,
-          d3.zoomIdentity.translate(x, y).scale(0.2)
-        )
-    },
-
-    calculateLink(link) {
-      return d3
-        .linkRadial()
-        .angle((d) => d.x)
-        .radius((d) => d.y)(link)
-    },
-
     /**
      * 为节点绑定事件
      */
@@ -264,7 +232,7 @@ export default {
             node: d,
             prunedNodes,
           })
-          draw(d)
+          draw(d) // 某些节点的childre变化了，重新计算布局并重绘
         })
         .on('mouseenter', function(e, d) {
           // hover放大动效
@@ -287,16 +255,15 @@ export default {
           const highlight =
             d.depth === 0 ? [...ancestors] : [...ancestors, ...descendants]
           chartContent
+            .select('g.chart-link')
             .selectAll('path.link')
             .filter((d) => highlight.includes(d.target))
             .classed('highlight', true)
-            .attr('stroke', '#1493C8')
           chartContent
+            .select('g.chart-node')
             .selectAll('g.node')
             .filter((d) => highlight.includes(d))
             .classed('highlight', true)
-            .select('circle')
-            .attr('fill', '#1493C8')
         })
         .on('mouseleave', function(e, d) {
           // hover缩小动效
@@ -322,13 +289,10 @@ export default {
             .selectAll('path.link')
             .filter((d) => highlight.includes(d.target))
             .classed('highlight', false)
-            .attr('stroke', '#555')
           chartContent
             .selectAll('g.node')
             .filter((d) => highlight.includes(d))
             .classed('highlight', false)
-            .select('circle')
-            .attr('fill', (d) => (d._children ? '#555' : '#999'))
         })
       if (enableTooltip) {
         nodeSelection
@@ -348,8 +312,8 @@ export default {
                 y: e.offsetY + 10,
               }
               tooltipInstance.data = {
-                name: d.data.name,
-              } // TODO: 展示哪些信息？
+                ...d.data
+              }
               tooltipMap.set(d, tooltipInstance)
               const tooltipVm = tooltipInstance.$mount()
               $refs.container.appendChild(tooltipVm.$el)
@@ -370,8 +334,8 @@ export default {
     limitMaximumVisibleNodes(max, node) {
       const prunedNodes = []
       const descendants = this.treeRoot.descendants()
-      const currentNodeCount = descendants.length + (node.children || []).length
-      if (currentNodeCount >= max) {
+      const currentNodeCount = descendants.length + (node.children || []).length // 将要渲染在图上的节点数量
+      if (currentNodeCount > max) {
         const ancestors = node.ancestors()
         this.treeRoot.eachBefore((currentNode) => {
           // 从根节点开始做先序遍历，做剪枝操作
@@ -387,6 +351,53 @@ export default {
     },
     pushHistory(data) {
       this.$refs.toolBar.$emit('pushStack', data)
+    },
+    drawLinks() {
+      const { chartContent } = this
+      const links = this.treeRoot.links()
+      const link = chartContent
+        .select('.chart-link')
+        .selectAll('path')
+        .data(links, (d) => d.target.id)
+
+      const linkEnter = link.enter().append('path').classed('link', true)
+      const linkExit = link.exit()
+      const linkUpdate = link.merge(linkEnter)
+
+      linkEnter.attr('d', (d) => {
+        return this.calculateLink({ source: d.source, target: d.source })
+      })
+
+      linkExit.remove()
+
+      linkUpdate
+        .transition()
+        .duration(this.durationBase)
+        .attr('d', this.calculateLink)
+    },
+    calculateLink(link) {
+      return d3
+        .linkRadial()
+        .angle((d) => d.x)
+        .radius((d) => d.y)(link)
+    },
+
+    centerChart() {
+      const {
+        chartContainer,
+        chartContainerWidth,
+        chartContainerHeight,
+        zoomListener,
+      } = this
+      const x = chartContainerWidth / 2
+      const y = chartContainerHeight / 2
+      chartContainer
+        .transition()
+        .duration(this.durationBase * 5)
+        .call(
+          zoomListener.transform,
+          d3.zoomIdentity.translate(x, y).scale(0.2)
+        )
     },
   },
 }
@@ -404,9 +415,15 @@ export default {
   pointer-events: none;
 }
 .node {
+  &.highlight {
+    circle {
+      fill: #1493C8
+    }
+  }
 }
 .link {
   &.highlight {
+    stroke:#1493C8;
     stroke-width: 5;
   }
 }
